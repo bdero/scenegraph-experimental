@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import audioWinRound from '../assets/winround.ogg'
+import Preloader from './preloader'
+import {audioContext} from './audio'
 
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
@@ -47,20 +49,13 @@ const render = () => {
 }
 requestAnimationFrame(render);
 
-const audioContext = new AudioContext();
 const source = audioContext.createBufferSource()
 
-fetch(audioWinRound)
+const preloader = new Preloader()
+preloader.addPreloadItems({audioWinRound: audioWinRound})
+preloader.fetch()
 .then(value => {
-    if (value.status == 200)
-        return value.arrayBuffer()
-
-    return Promise.reject(
-        `Request to "${value.url}" returned invalid status "${value.status}"`)
-})
-.then(value => audioContext.decodeAudioData(value))
-.then(buffer => {
-    source.buffer = buffer
+    source.buffer = value['audioWinRound']
     source.connect(audioContext.destination)
     source.start()
 })

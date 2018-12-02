@@ -4,6 +4,7 @@ import Preloader from './preloader'
 import {audioContext, SoundClip} from './audio'
 import {renderer} from './renderer'
 import {Scene} from './scene'
+import Timeline from './timeline'
 
 const camera = new THREE.PerspectiveCamera(
     45, window.innerWidth/window.innerHeight, 0.1, 3000)
@@ -26,6 +27,7 @@ const cubeMesh = new THREE.Mesh(
         emissiveIntensity: 0.3
     })
 );
+cubeMesh.name = 'nicecube'
 cubeMesh.position.set(0, 0, -1000)
 
 scene.add(cubeMesh)
@@ -43,7 +45,15 @@ const preloader = new Preloader()
 preloader.addPreloadItems({audioWinRound: audioWinRound})
 preloader.fetch()
 .then(value => {
-    window.clip = new SoundClip(value['audioWinRound'], true)
+    const clip = new SoundClip(value['audioWinRound'])
+    //clip.play()
+
+    window.timeline = new Timeline()
+    scene.addTimeline(timeline, 'my timeline')
+    timeline.addKeyframe(0, 'nicecube:position.x', -100)
+    timeline.addKeyframe(5, 'nicecube:position.x', 100)
+    //timeline.addEvent(2, () => {clip.play()})
+    //timeline.play()
 })
 .catch(reason => {
     console.error(`Error occurred: ${reason}`)

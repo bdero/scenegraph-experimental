@@ -2,24 +2,14 @@ import * as THREE from 'three'
 import audioWinRound from '../assets/winround.ogg'
 import Preloader from './preloader'
 import {audioContext, SoundClip} from './audio'
-
-
-const canvas = document.getElementById('canvas') as HTMLCanvasElement
-const renderer = new THREE.WebGLRenderer({canvas: canvas})
-renderer.setClearColor(new THREE.Color("black"))
+import {renderer} from './renderer'
+import {Scene} from './scene'
 
 const camera = new THREE.PerspectiveCamera(
     45, window.innerWidth/window.innerHeight, 0.1, 3000)
-const resetSize = () => {
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    camera.aspect = window.innerWidth/window.innerHeight
-    camera.updateProjectionMatrix()
-}
-window.addEventListener('resize', resetSize)
-resetSize();
 
-const scene = new THREE.Scene()
+const scene = new Scene()
+scene.setActiveCamera(camera)
 
 const light = new THREE.AmbientLight(0xffffff, 0.5)
 scene.add(light)
@@ -44,12 +34,10 @@ const render = () => {
     cubeMesh.rotation.x += 0.01
     cubeMesh.rotation.y += 0.03
     cubeMesh.rotation.z += 0.07
-    renderer.render(scene, camera)
+    scene.render()
     requestAnimationFrame(render)
 }
 requestAnimationFrame(render);
-
-//const source = audioContext.createBufferSource()
 
 const preloader = new Preloader()
 preloader.addPreloadItems({audioWinRound: audioWinRound})

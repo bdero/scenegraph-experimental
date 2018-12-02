@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import audioWinRound from '../assets/winround.ogg'
 import Preloader from './preloader'
-import {audioContext} from './audio'
+import {audioContext, SoundClip} from './audio'
 
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
@@ -49,15 +49,13 @@ const render = () => {
 }
 requestAnimationFrame(render);
 
-const source = audioContext.createBufferSource()
+//const source = audioContext.createBufferSource()
 
 const preloader = new Preloader()
 preloader.addPreloadItems({audioWinRound: audioWinRound})
 preloader.fetch()
 .then(value => {
-    source.buffer = value['audioWinRound']
-    source.connect(audioContext.destination)
-    source.start()
+    window.clip = new SoundClip(value['audioWinRound'], true)
 })
 .catch(reason => {
     console.error(`Error occurred: ${reason}`)

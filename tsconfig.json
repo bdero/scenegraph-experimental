@@ -10,6 +10,7 @@
     "jsx": "preserve",
     "lib": ["es2017", "dom"],
     "strict": true,
+    "alwaysStrict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,

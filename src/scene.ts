@@ -31,13 +31,16 @@ interface Timelines {
 /**
  * Wrapper for THREE.Object3D which provides uniqueness constraints along with
  * a meta graph for efficient querying of objects within the scene.
+ *
+ * Entities can also have Timelines attached to them, which can take control of
+ * any property values within the ThreeJS scene
  */
 class Entity {
     public sceneObject: THREE.Object3D
 
     public parent: Entity | null = null
     public children: EntityChildren = {}
-    private timelines: Timelines = {}
+    public timelines: Timelines = {}
 
     constructor(sceneObject: THREE.Object3D) {
         this.sceneObject = sceneObject
@@ -46,6 +49,40 @@ class Entity {
                 `Unable to create Entity from scene object because it ` +
                 `already has children in the scene graph.`)
         }
+    }
+
+    getAllTimelines(): Timeline[] {
+        const entities: Entity[] = [this]
+        const timelines: Timeline[] = []
+        // Do an iterative BFS and collect all of the timelines.
+        while (entities.length > 0) {
+            const entity = entities.shift() as Entity
+            timelines.push(...Object.values(entity.timelines))
+            entities.push(...Object.values(entity.children))
+        }
+        return timelines
+    }
+
+    /**
+     * Returns the scene that this entity is currently a member of, or returns
+     * null when the root node is not a scene.
+     */
+    getScene(): Scene | null {
+        const root = this.getRoot()
+        if (root instanceof Scene) return root
+        return null
+    }
+
+    /**
+     * Returns the top-most node of this entity's entity tree. Note that this
+     * Entity may or may not be a Scene node.
+     */
+    getRoot(): Entity {
+        let entity: Entity = this
+        while (this.parent !== null) {
+            entity = this.parent
+        }
+        return entity
     }
 
     add(object: Entity | THREE.Object3D): Entity {
@@ -63,7 +100,7 @@ class Entity {
         }
         object.sceneObject.name = name
 
-        // Ensure that all entities be part of one scene graph
+        // Ensure that all entities be part of one scene graph.
         if (object.sceneObject.parent !== null) {
             throw new Error(
                 `Unable to add object "${name}" as a child of ` +
@@ -76,6 +113,14 @@ class Entity {
         // Link the new child to the meta graph.
         object.parent = this
         this.children[name] = object
+
+        // If this node is within a scene, collect all timelines within the
+        // child entity and register them as part of the scene.
+        const scene = this.getScene()
+        if (scene !== null) {
+            const timelines = object.getAllTimelines()
+            scene.registerSceneTimelines(...timelines)
+        }
 
         return object
     }
@@ -98,6 +143,14 @@ class Entity {
         // Unlink the child from the meta graph.
         childObject.parent = null
         delete this.children[object]
+
+        // If this node is within a scene, collect all timelines within the
+        // child entity and unregister them from the scene.
+        const scene = this.getScene()
+        if (scene !== null) {
+            const timelines = childObject.getAllTimelines()
+            scene.unregisterSceneTimelines(...timelines)
+        }
     }
 
     addTimeline(timeline: Timeline, name?: string) {
@@ -120,6 +173,12 @@ class Entity {
             }
         })
         timeline.bindToEntity(this)
+
+        // Register the timeline to the scene cache.
+        const scene = this.getScene()
+        if (scene !== null) {
+            scene.registerSceneTimelines(timeline)
+        }
     }
 
     detach() {
@@ -130,9 +189,28 @@ class Entity {
 
 class Scene extends Entity {
     private activeCamera: Camera | null = null
+    // Write registered Timelines to a cached set to enforce uniqueness with
+    // O(1) rather than doing O(n) checks, and further cache the resulting
+    // values as an array for fast indexing during render time.
+    private timelineCacheSet: Set<Timeline> = new Set()
+    private timelineCache: Timeline[] = []
 
     constructor() {
         super(new THREE.Scene())
+    }
+
+    registerSceneTimelines(...timelines: Timeline[]) {
+        timelines.forEach((timeline) => {
+            this.timelineCacheSet.add(timeline)
+        })
+        this.timelineCache = new Array(...this.timelineCacheSet)
+    }
+
+    unregisterSceneTimelines(...timelines: Timeline[]) {
+        timelines.forEach((timeline) => {
+            this.timelineCacheSet.delete(timeline)
+        })
+        this.timelineCache = new Array(...this.timelineCacheSet)
     }
 
     setActiveCamera(camera: Camera) {
@@ -150,6 +228,10 @@ class Scene extends Entity {
     }
 
     render() {
+        for (let i = 0, l = this.timelineCacheSet.size; i < l; ++i) {
+            this.timelineCache[i].update()
+        }
+
         if (this.activeCamera !== null) {
             this.updateCameraAspect()
             renderer.render(this.sceneObject as THREE.Scene, this.activeCamera)

@@ -53,7 +53,7 @@ preloader.fetch()
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
     timeline.addKeyframe(5, 'nicecube:position.x', 100)
     //timeline.addEvent(2, () => {clip.play()})
-    //timeline.play()
+    timeline.play()
 })
 .catch(reason => {
     console.error(`Error occurred: ${reason}`)

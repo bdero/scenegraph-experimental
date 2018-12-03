@@ -12,7 +12,7 @@ interface EntityProperty {
     keyframes: Keyframes
 }
 
-/** Keyframes over a single property. */
+/** A collection of keyframes over a single property. */
 interface Keyframes {
     [time: number]: Keyframe
     sortedTimes: number[]
@@ -22,9 +22,58 @@ interface Keyframe {
     value: number
 }
 
+enum TimelinePlayState {Stopped, Playing, Paused}
+
 class Timeline {
     private entity: Entity | null = null
     private entityProperties: EntityProperties = {}
+    private playState: TimelinePlayState = TimelinePlayState.Stopped
+
+    private startTime: number = 0
+    private pausedTime: number = 0
+
+    private static getTimestamp() {
+        return Date.now()/1000
+    }
+
+    play(startPosition?: number) {
+        if (this.playState === TimelinePlayState.Playing) return
+
+        let startOffset = 0
+        if (startPosition) {
+            startOffset = startPosition
+        } else if(this.playState === TimelinePlayState.Paused) {
+            startOffset = this.pausedTime - this.startTime
+        }
+
+        this.startTime = Timeline.getTimestamp() - startOffset
+        this.playState = TimelinePlayState.Playing
+    }
+
+    pause() {
+        if (this.playState !== TimelinePlayState.Playing) return
+
+        this.pausedTime = Timeline.getTimestamp()
+        this.playState = TimelinePlayState.Paused
+    }
+
+    stop() {
+        this.playState = TimelinePlayState.Stopped
+    }
+
+    update() {
+        if (this.playState === TimelinePlayState.Stopped) return
+
+
+    }
+
+    getElapsedTime(): number {
+        if (this.playState === TimelinePlayState.Stopped) return 0
+        if (this.playState === TimelinePlayState.Paused)
+            return this.pausedTime - this.startTime
+
+        return Timeline.getTimestamp() - this.startTime
+    }
 
     bindToEntity(entity: Entity) {
         if (this.entity !== null) {
@@ -34,10 +83,10 @@ class Timeline {
                 `an entity (with name: ${this.entity.sceneObject.name}).`)
         }
         this.entity = entity
-        this.updateAllProperties()
+        this.resolveAllProperties()
     }
 
-    private updateProperty(path: string) {
+    private resolveProperty(path: string) {
         if (this.entity === null) return
         const property = this.entityProperties[path]
         if (property.enabled) return
@@ -87,9 +136,9 @@ class Timeline {
         property.enabled = true
     }
 
-    private updateAllProperties() {
+    private resolveAllProperties() {
         Object.keys(this.entityProperties).forEach(name => {
-            this.updateProperty(name)
+            this.resolveProperty(name)
         });
     }
 
@@ -119,7 +168,7 @@ class Timeline {
         property.keyframes[time] = {value: value}
         property.keyframes.sortedTimes.push(time)
         property.keyframes.sortedTimes.sort()
-        this.updateProperty(propertyPath)
+        this.resolveProperty(propertyPath)
     }
 }
 

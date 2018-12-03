@@ -39,7 +39,6 @@ const render = () => {
     scene.render()
     requestAnimationFrame(render)
 }
-requestAnimationFrame(render);
 
 const preloader = new Preloader()
 preloader.addPreloadItems({audioWinRound: audioWinRound})
@@ -51,9 +50,11 @@ preloader.fetch()
     window.timeline = new Timeline()
     scene.addTimeline(timeline, 'my timeline')
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
-    timeline.addKeyframe(5, 'nicecube:position.x', 100)
-    //timeline.addEvent(2, () => {clip.play()})
+    timeline.addKeyframe(2, 'nicecube:position.x', 100)
+    timeline.addEvent(2, () => {clip.play()})
     timeline.play()
+
+    requestAnimationFrame(render);
 })
 .catch(reason => {
     console.error(`Error occurred: ${reason}`)

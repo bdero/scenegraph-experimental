@@ -7,26 +7,97 @@ interface EntityProperties {
 
 interface EntityProperty {
     enabled: boolean
-    object: object | null
+    object: EntityPropertyObject | null
     property: string | null
-    keyframes: Keyframes
+    timeline: PropertyTimeline
 }
 
-/** A collection of keyframes over a single property. */
-interface Keyframes {
-    [time: number]: Keyframe
-    sortedTimes: number[]
+interface EntityPropertyObject {
+    [property: string]: any
 }
 
 interface Keyframe {
     value: number
 }
 
+interface Event {
+    callback: EventCallback
+}
+
+type EventCallback = () => void
+
 enum TimelinePlayState {Stopped, Playing, Paused}
+
+class PropertyTimeline {
+    public sortedTimes: number[] = []
+    public keyframes: Keyframe[] = []
+
+    private cursor: number = 0
+
+    getValue(time: number): number | null {
+        // If there are no keyframes at all, don't control the value.
+        if (this.sortedTimes.length === 0) return null
+
+        // Seek the cursor to to closest keyframe <= to the current time. This
+        // linear searches from the current cursor location to the correct
+        // keyframe. The intention here is to optimize to O(1) for the use case
+        // of querying times rapidly over small increments (which is what the
+        // Timeline does).
+        if (this.sortedTimes[this.cursor] > time) {
+            // Cursor needs to be pushed to the past.
+            do {
+                if (this.cursor === 0) {
+                    // If the time being queried is before the first keyframe,
+                    // return the value of the first keyframe.
+                    return this.keyframes[this.sortedTimes[this.cursor]].value
+                }
+                --this.cursor
+            } while (this.sortedTimes[this.cursor] > time)
+        } else {
+            // Cursor might need to be pushed to the future.
+            while (
+                // Cursor is not on the last keyframe
+                this.sortedTimes.length - 1 > this.cursor
+                // and the time of the next keyframe is <= the queried time
+                && this.sortedTimes[this.cursor + 1] <= time
+            ) {
+                ++this.cursor
+            }
+            if (this.cursor === this.sortedTimes.length - 1) {
+                // If the time being queried is greater than or equal to the
+                // time of the last keyframe, return the value of the last
+                // keyframe.
+                return this.keyframes[this.sortedTimes[this.cursor]].value
+            }
+        }
+        if (time === this.sortedTimes[this.cursor]) {
+            return this.keyframes[this.sortedTimes[this.cursor]].value
+        }
+        // At this point, we can be sure that the time being queried sits
+        // between two keyframes, and that the cursor is placed on the first of
+        // them (in ascending time order).
+        const k0 = this.sortedTimes[this.cursor]
+        const k1 = this.sortedTimes[this.cursor + 1]
+        const linearTime = (time - k0)/(k1 - k0)
+
+        // TODO: Pass lineartime through a chosen curve function.
+
+        return this.keyframes[k0].value + linearTime*(
+            this.keyframes[k1].value - this.keyframes[k0].value)
+    }
+}
 
 class Timeline {
     private entity: Entity | null = null
     private entityProperties: EntityProperties = {}
+    private entityPropertiesList: EntityProperty[] = []
+
+    private sortedEventTimes: number[] = []
+    // The first index is the time lookup, each of which has an array of events
+    // registered for that time.
+    private events: Array<Array<Event>> = []
+    private eventCursor: number | null = null
+
     private playState: TimelinePlayState = TimelinePlayState.Stopped
 
     private startTime: number = 0
@@ -64,10 +135,41 @@ class Timeline {
     update() {
         if (this.playState === TimelinePlayState.Stopped) return
 
+        const timeElapsed = this.getTimeElapsed()
+        for (let i = 0, l = this.entityPropertiesList.length; i < l; ++i) {
+            const property = this.entityPropertiesList[i]
+            if (property.enabled) {
+                (property.object as EntityPropertyObject)[
+                    property.property as string
+                ] = property.timeline.getValue(timeElapsed);
+            }
+        }
+        if (this.sortedEventTimes.length > 0) {
 
+            while (
+                // Cursor is null and there's one that exists
+                (this.eventCursor == null && this.sortedEventTimes.length)
+                // Or the cursor is assigned but it's not to the last event's
+                // time.
+                || (this.eventCursor != null
+                    && this.sortedEventTimes.length - 1 < this.eventCursor)
+            ) {
+                let nextCursor =
+                    this.eventCursor === null ? 0 : this.eventCursor + 1
+                if (timeElapsed < this.sortedEventTimes[nextCursor]) {
+                    break
+                }
+                this.eventCursor = nextCursor
+                this.events[this.sortedEventTimes[nextCursor]].forEach(
+                    (event) => {
+                        event.callback()
+                    }
+                )
+            }
+        }
     }
 
-    getElapsedTime(): number {
+    getTimeElapsed(): number {
         if (this.playState === TimelinePlayState.Stopped) return 0
         if (this.playState === TimelinePlayState.Paused)
             return this.pausedTime - this.startTime
@@ -149,26 +251,37 @@ class Timeline {
                 `because it's not a valid property path.`)
         }
         if (!(propertyPath in this.entityProperties)) {
-            this.entityProperties[propertyPath] = {
+            const newProperty = {
                 enabled: false,
                 object: null,
                 property: null,
-                keyframes: {
-                    sortedTimes: []
-                }
+                timeline: new PropertyTimeline()
             }
+            this.entityProperties[propertyPath] = newProperty
+            this.entityPropertiesList.push(newProperty)
         }
         const property = this.entityProperties[propertyPath]
-        if (property.keyframes[time]) {
+        if (property.timeline.keyframes[time]) {
             throw new Error(
                 `Unable to add keyframe for property path "${propertyPath}" ` +
                 `at time "${time}" because a keyframe matching that ` +
                 `property and time has already been set.`)
         }
-        property.keyframes[time] = {value: value}
-        property.keyframes.sortedTimes.push(time)
-        property.keyframes.sortedTimes.sort()
+        property.timeline.keyframes[time] = {value: value}
+        property.timeline.sortedTimes.push(time)
+        property.timeline.sortedTimes.sort()
         this.resolveProperty(propertyPath)
+    }
+
+    addEvent(time: number, callback: EventCallback) {
+        if (!this.events[time]) {
+            this.events[time] = []
+        }
+        if (!this.sortedEventTimes.includes(time)) {
+            this.sortedEventTimes.push(time)
+            this.sortedEventTimes.sort()
+        }
+        this.events[time].push({callback: callback})
     }
 }
 

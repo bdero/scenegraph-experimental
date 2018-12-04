@@ -16,6 +16,10 @@ interface EntityPropertyObject {
     [property: string]: any
 }
 
+interface Keyframes {
+    [time: number]: Keyframe
+}
+
 interface Keyframe {
     value: number
 }
@@ -30,9 +34,34 @@ enum TimelinePlayState {Stopped, Playing, Paused}
 
 class PropertyTimeline {
     public sortedTimes: number[] = []
-    public keyframes: Keyframe[] = []
+    public keyframes: Keyframes = {}
+    public length: number = 0
 
     private cursor: number = 0
+
+    addKeyframe(time: number, value: number) {
+        this.keyframes[time] = {value: value}
+        this.sortedTimes.push(time)
+        this.sortedTimes.sort()
+        this.updateLength()
+    }
+
+    removeKeyframe(time: number) {
+        delete this.keyframes[time]
+        this.sortedTimes.splice(
+            this.sortedTimes.indexOf(time), 1)
+        const lastKeyframe = this.sortedTimes.length - 1
+
+        if (this.cursor != 0 && this.cursor > lastKeyframe) {
+            this.cursor = lastKeyframe
+        }
+
+        this.updateLength()
+    }
+
+    private updateLength() {
+        this.length = this.sortedTimes[this.sortedTimes.length - 1]
+    }
 
     getValue(time: number): number | null {
         // If there are no keyframes at all, don't control the value.
@@ -102,6 +131,11 @@ class Timeline {
 
     private startTime: number = 0
     private pausedTime: number = 0
+
+    // The time of the latest scheduled keyframe or event. This value is
+    // computed directly from getLength() whenever timeline elements are
+    // updated for caching purposes.
+    private length: number = 0
 
     private static getTimestamp() {
         return Date.now()/1000
@@ -175,6 +209,20 @@ class Timeline {
             return this.pausedTime - this.startTime
 
         return Timeline.getTimestamp() - this.startTime
+    }
+
+    /** Get the total length of this timeline in seconds. */
+    getLength(): number {
+        return Math.max(
+            this.sortedEventTimes[this.sortedEventTimes.length - 1],
+            ...this.entityPropertiesList.map((value) => {
+                return value.timeline.length
+            })
+        )
+    }
+
+    private updateLengthCache() {
+        this.length = this.getLength()
     }
 
     bindToEntity(entity: Entity) {
@@ -267,10 +315,27 @@ class Timeline {
                 `at time "${time}" because a keyframe matching that ` +
                 `property and time has already been set.`)
         }
-        property.timeline.keyframes[time] = {value: value}
-        property.timeline.sortedTimes.push(time)
-        property.timeline.sortedTimes.sort()
+        property.timeline.addKeyframe(time, value)
         this.resolveProperty(propertyPath)
+
+        this.updateLengthCache()
+    }
+
+    removeKeyframe(time: number, propertyPath: string) {
+        const property = this.entityProperties[propertyPath]
+        if (!property) {
+            throw new Error(
+                `Unable to remove keyframe for property path ` +
+                `"${propertyPath}" at time "${time}" because there are no ` +
+                `keyframes registed for property "${propertyPath}".`)
+        }
+        if (!property.timeline.keyframes[time]) {
+            throw new Error(
+                `Unable to remove keyframe for property path ` +
+                `"${propertyPath}" at time "${time}" because is no keyframe ` +
+                `registered at time "${time}" for property "${propertyPath}".`)
+        }
+        property.timeline.removeKeyframe(time)
     }
 
     addEvent(time: number, callback: EventCallback) {
@@ -282,6 +347,8 @@ class Timeline {
             this.sortedEventTimes.sort()
         }
         this.events[time].push({callback: callback})
+
+        this.updateLengthCache()
     }
 }
 

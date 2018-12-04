@@ -50,8 +50,13 @@ preloader.fetch()
     window.timeline = new Timeline()
     scene.addTimeline(timeline, 'my timeline')
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
-    timeline.addKeyframe(2, 'nicecube:position.x', 100)
-    timeline.addEvent(2, () => {clip.play()})
+    timeline.addKeyframe(1, 'nicecube:position.x', 100)
+
+    timeline.addKeyframe(1, 'nicecube:position.y', 0)
+    timeline.addKeyframe(1.2, 'nicecube:position.y', 100)
+    timeline.addKeyframe(1.4, 'nicecube:position.y', 0)
+    timeline.removeKeyframe(1.4, 'nicecube:position.y')
+    //timeline.addEvent(2, () => {clip.play()})
     timeline.play()
 
     requestAnimationFrame(render);

@@ -56,7 +56,7 @@ preloader.fetch()
     timeline.addKeyframe(1.2, 'nicecube:position.y', 100)
     timeline.addKeyframe(1.4, 'nicecube:position.y', 0)
     timeline.removeKeyframe(1.4, 'nicecube:position.y')
-    //timeline.addEvent(2, () => {clip.play()})
+    timeline.addEvent(2, () => {clip.play()})
     timeline.play()
 
     requestAnimationFrame(render);

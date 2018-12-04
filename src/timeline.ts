@@ -179,7 +179,6 @@ class Timeline {
             }
         }
         if (this.sortedEventTimes.length > 0) {
-
             while (
                 // Cursor is null and there's one that exists
                 (this.eventCursor == null && this.sortedEventTimes.length)
@@ -201,6 +200,9 @@ class Timeline {
                 )
             }
         }
+        if (timeElapsed >= this.length) {
+            this.stop()
+        }
     }
 
     getTimeElapsed(): number {
@@ -214,7 +216,8 @@ class Timeline {
     /** Get the total length of this timeline in seconds. */
     getLength(): number {
         return Math.max(
-            this.sortedEventTimes[this.sortedEventTimes.length - 1],
+            this.sortedEventTimes.length === 0 ?
+                0 : this.sortedEventTimes[this.sortedEventTimes.length - 1],
             ...this.entityPropertiesList.map((value) => {
                 return value.timeline.length
             })

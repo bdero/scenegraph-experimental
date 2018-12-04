@@ -117,6 +117,8 @@ class PropertyTimeline {
 }
 
 class Timeline {
+    public loop: boolean
+
     private entity: Entity | null = null
     private entityProperties: EntityProperties = {}
     private entityPropertiesList: EntityProperty[] = []
@@ -139,6 +141,10 @@ class Timeline {
 
     private static getTimestamp() {
         return Date.now()/1000
+    }
+
+    constructor(loop: boolean = false) {
+        this.loop = loop
     }
 
     play(startPosition?: number) {
@@ -201,7 +207,14 @@ class Timeline {
             }
         }
         if (timeElapsed >= this.length) {
-            this.stop()
+            if (this.loop) {
+                this.startTime = Timeline.getTimestamp() - (
+                    timeElapsed - this.length)
+                this.eventCursor = null
+                this.update()
+            } else {
+                this.stop()
+            }
         }
     }
 

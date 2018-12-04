@@ -47,7 +47,7 @@ preloader.fetch()
     const clip = new SoundClip(value['audioWinRound'])
     //clip.play()
 
-    window.timeline = new Timeline()
+    const timeline = new Timeline(true)
     scene.addTimeline(timeline, 'my timeline')
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
     timeline.addKeyframe(1, 'nicecube:position.x', 100)
@@ -56,7 +56,7 @@ preloader.fetch()
     timeline.addKeyframe(1.2, 'nicecube:position.y', 100)
     timeline.addKeyframe(1.4, 'nicecube:position.y', 0)
     timeline.removeKeyframe(1.4, 'nicecube:position.y')
-    timeline.addEvent(2, () => {clip.play()})
+    timeline.addEvent(0, () => {clip.stop(); clip.play()})
     timeline.play()
 
     requestAnimationFrame(render);

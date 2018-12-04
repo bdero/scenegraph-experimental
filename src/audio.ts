@@ -7,11 +7,15 @@ class SoundClip {
     private bufferSource: AudioBufferSourceNode | null = null
     private startTime: number = 0
     private pausedTime: number = 0
+    private playbackRate: number
 
     playState: SoundPlayState = SoundPlayState.Stopped
 
-    constructor(buffer: AudioBuffer, play?: boolean) {
+    constructor(
+        buffer: AudioBuffer, play: boolean = false, playbackRate: number = 1
+    ) {
         this.buffer = buffer
+        this.playbackRate = playbackRate
         if (play) {
             this.play()
         }
@@ -52,6 +56,7 @@ class SoundClip {
 
         this.bufferSource = audioContext.createBufferSource()
         this.bufferSource.buffer = this.buffer
+        this.bufferSource.playbackRate.value = this.playbackRate
         this.bufferSource.connect(audioContext.destination)
 
         let startOffset = 0

@@ -352,6 +352,8 @@ class Timeline {
                 `registered at time "${time}" for property "${propertyPath}".`)
         }
         property.timeline.removeKeyframe(time)
+
+        this.updateLengthCache()
     }
 
     addEvent(time: number, callback: EventCallback) {

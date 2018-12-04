@@ -63,13 +63,15 @@ class SoundClip {
         startOffset *= this.bufferSource.playbackRate.value
 
         this.bufferSource.start(0, startOffset)
-        this.bufferSource.addEventListener('ended', () => {
-            this.bufferSource = null
+
+        const currentBuffer = this.bufferSource
+        this.bufferSource.addEventListener('ended', (ev) => {
             // This callback executes whenever the buffer source is stopped for
-            // any reason, whether manually or automatically.
-            if (this.isPlaying()) {
-                this.playState = SoundPlayState.Stopped
-                this.bufferSource = null
+            // any reason, whether manually or automatically. It's possible
+            // that this AudioClip has already stopped and replaced the audio
+            // source triggering this event, so checking is necessary.
+            if (this.bufferSource === currentBuffer) {
+                this.stop()
             }
         })
 

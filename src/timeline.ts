@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {Entity, PROPERTY_PATH_REGEX} from "./scene";
+import {EasingFunctions, EasingFunction, EasingFunctionKey} from './easing'
 
 interface EntityProperties {
     [propertyPath: string]: EntityProperty
@@ -22,6 +23,7 @@ interface Keyframes {
 
 interface Keyframe {
     value: number
+    easingFunction: EasingFunction
 }
 
 interface Event {
@@ -39,8 +41,11 @@ class PropertyTimeline {
 
     private cursor: number = 0
 
-    addKeyframe(time: number, value: number) {
-        this.keyframes[time] = {value: value}
+    addKeyframe(time: number, value: number, easingFunction: EasingFunction) {
+        this.keyframes[time] = {
+            value: value,
+            easingFunction: easingFunction
+        }
         this.sortedTimes.push(time)
         this.sortedTimes.sort()
         this.updateLength()
@@ -109,9 +114,9 @@ class PropertyTimeline {
         const k1 = this.sortedTimes[this.cursor + 1]
         const linearTime = (time - k0)/(k1 - k0)
 
-        // TODO: Pass lineartime through a chosen curve function.
+       const value = this.keyframes[k1].easingFunction(linearTime)
 
-        return this.keyframes[k0].value + linearTime*(
+        return this.keyframes[k0].value + value*(
             this.keyframes[k1].value - this.keyframes[k0].value)
     }
 }
@@ -308,7 +313,10 @@ class Timeline {
         });
     }
 
-    addKeyframe(time: number, propertyPath: string, value: number) {
+    addKeyframe(
+        time: number, propertyPath: string, value: number,
+        easeFunction: EasingFunction | EasingFunctionKey = EasingFunctions.linear
+    ) {
         if (!(propertyPath.match(PROPERTY_PATH_REGEX))) {
             throw new Error(
                 `Unable to add keyframe for property path "${propertyPath}" ` +
@@ -331,7 +339,10 @@ class Timeline {
                 `at time "${time}" because a keyframe matching that ` +
                 `property and time has already been set.`)
         }
-        property.timeline.addKeyframe(time, value)
+        if (typeof(easeFunction) === 'string') {
+            easeFunction = EasingFunctions[easeFunction]
+        }
+        property.timeline.addKeyframe(time, value, easeFunction)
         this.resolveProperty(propertyPath)
 
         this.updateLengthCache()

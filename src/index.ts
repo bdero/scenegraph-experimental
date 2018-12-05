@@ -38,25 +38,28 @@ const render = () => {
     cubeMesh.rotation.z += 0.07
     scene.render()
     requestAnimationFrame(render)
-}
 
+    //console.log(clip!.getPlayState())
+}
+let clip: SoundClip | null = null
 const preloader = new Preloader()
 preloader.addPreloadItems({audioWinRound: audioWinRound})
 preloader.fetch()
 .then(value => {
-    const clip = new SoundClip(value['audioWinRound'])
+    clip = new SoundClip(value['audioWinRound'], false, 1.2)
     //clip.play()
 
     const timeline = new Timeline(true)
     scene.addTimeline(timeline, 'my timeline')
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
-    timeline.addKeyframe(1, 'nicecube:position.x', 100)
+    timeline.addKeyframe(1, 'nicecube:position.x', 100, 'inOutSine')
 
     timeline.addKeyframe(1, 'nicecube:position.y', 0)
-    timeline.addKeyframe(1.2, 'nicecube:position.y', 100)
-    timeline.addKeyframe(1.4, 'nicecube:position.y', 0)
-    timeline.removeKeyframe(1.4, 'nicecube:position.y')
-    timeline.addEvent(0, () => {clip.stop(); clip.play()})
+    timeline.addKeyframe(1.2, 'nicecube:position.y', 100, 'outSine')
+    timeline.addKeyframe(1.4, 'nicecube:position.y', 0, 'inSine')
+    //timeline.removeKeyframe(1.4, 'nicecube:position.y')
+    console.log(timeline.getLength())
+    //timeline.addEvent(0.5, () => {clip!.stop(); clip!.play()})
     timeline.play()
 
     requestAnimationFrame(render);

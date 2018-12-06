@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {Entity, PROPERTY_PATH_REGEX} from "./scene";
-import {EasingFunctions, EasingFunction, EasingFunctionKey} from './easing'
+import {Curves, CurveFunction, CurveKey} from './curves'
 
 interface EntityProperties {
     [propertyPath: string]: EntityProperty
@@ -23,7 +23,7 @@ interface Keyframes {
 
 interface Keyframe {
     value: number
-    easingFunction: EasingFunction
+    easingFunction: CurveFunction
 }
 
 interface Event {
@@ -41,7 +41,7 @@ class PropertyTimeline {
 
     private cursor: number = 0
 
-    addKeyframe(time: number, value: number, easingFunction: EasingFunction) {
+    addKeyframe(time: number, value: number, easingFunction: CurveFunction) {
         this.keyframes[time] = {
             value: value,
             easingFunction: easingFunction
@@ -315,7 +315,7 @@ class Timeline {
 
     addKeyframe(
         time: number, propertyPath: string, value: number,
-        easeFunction: EasingFunction | EasingFunctionKey = EasingFunctions.linear
+        curve: CurveFunction | CurveKey = Curves.linear
     ) {
         if (!(propertyPath.match(PROPERTY_PATH_REGEX))) {
             throw new Error(
@@ -339,10 +339,10 @@ class Timeline {
                 `at time "${time}" because a keyframe matching that ` +
                 `property and time has already been set.`)
         }
-        if (typeof(easeFunction) === 'string') {
-            easeFunction = EasingFunctions[easeFunction]
+        if (typeof(curve) === 'string') {
+            curve = Curves[curve]
         }
-        property.timeline.addKeyframe(time, value, easeFunction)
+        property.timeline.addKeyframe(time, value, curve)
         this.resolveProperty(propertyPath)
 
         this.updateLengthCache()

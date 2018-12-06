@@ -1,8 +1,7 @@
 import * as THREE from 'three'
 import audioWinRound from '../assets/winround.ogg'
 import Preloader from './preloader'
-import {audioContext, SoundClip} from './audio'
-import {renderer} from './renderer'
+import {SoundClip} from './audio'
 import {Scene} from './scene'
 import Timeline from './timeline'
 
@@ -52,11 +51,11 @@ preloader.fetch()
     const timeline = new Timeline(true)
     scene.addTimeline(timeline, 'my timeline')
     timeline.addKeyframe(0, 'nicecube:position.x', -100)
-    timeline.addKeyframe(1, 'nicecube:position.x', 100, 'inOutSine')
+    timeline.addKeyframe(1, 'nicecube:position.x', 100, 'easeInOutSine')
 
     timeline.addKeyframe(1, 'nicecube:position.y', 0)
     timeline.addKeyframe(1.2, 'nicecube:position.y', 100, 'outSine')
-    timeline.addKeyframe(1.4, 'nicecube:position.y', 0, 'inSine')
+    timeline.addKeyframe(1.4, 'nicecube:position.y', 0, 'easeInSine')
     //timeline.removeKeyframe(1.4, 'nicecube:position.y')
     console.log(timeline.getLength())
     //timeline.addEvent(0.5, () => {clip!.stop(); clip!.play()})
